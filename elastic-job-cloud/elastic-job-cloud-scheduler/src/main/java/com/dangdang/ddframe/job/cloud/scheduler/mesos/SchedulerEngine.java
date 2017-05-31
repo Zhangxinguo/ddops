@@ -58,6 +58,7 @@ public final class SchedulerEngine implements Scheduler {
         frameworkIDService.save(frameworkID.getValue());
         taskScheduler.expireAllLeases();
         MesosStateService.register(masterInfo.getHostname(), masterInfo.getPort());
+        MesosAddressService.register(masterInfo.getHostname(), masterInfo.getPort());
     }
     
     @Override
@@ -65,6 +66,7 @@ public final class SchedulerEngine implements Scheduler {
         log.info("call reregistered");
         taskScheduler.expireAllLeases();
         MesosStateService.register(masterInfo.getHostname(), masterInfo.getPort());
+        MesosAddressService.register(masterInfo.getHostname(), masterInfo.getPort());
     }
     
     @Override
@@ -142,6 +144,7 @@ public final class SchedulerEngine implements Scheduler {
     public void disconnected(final SchedulerDriver schedulerDriver) {
         log.warn("call disconnected");
         MesosStateService.deregister();
+        MesosAddressService.deregister();
     }
     
     @Override
