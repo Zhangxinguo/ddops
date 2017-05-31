@@ -19,12 +19,25 @@ package com.dangdang.ddframe.job.cloud.scheduler.util;
 
 import com.sun.jersey.api.client.Client;
 
+/**
+ * Http工具类.
+ *
+ * @author liguangyun
+ */
 public class HttpUtils {
     
     private static final int DEFAULT_CONN_TIMEOUT = 5 * 1000;
     
     private static final int DEFAULT_SO_TIMEOUT = 5 * 1000;
     
+    /**
+     * GET调用.
+     * 
+     * @param url url地址
+     * @param connectTimeout 连接超时，单位为毫秒
+     * @param socketTimeout 传输超时，单位为毫秒
+     * @return 调用结果
+     */
     public static String get(final String url, final int connectTimeout, final int socketTimeout) {
         Client client = Client.create();
         client.setConnectTimeout(connectTimeout);
@@ -32,6 +45,12 @@ public class HttpUtils {
         return client.resource(url).get(String.class);
     }
     
+    /**
+     * GET调用.
+     * 
+     * @param url url地址
+     * @return 调用结果
+     */
     public static String get(final String url) {
         return get(url, DEFAULT_CONN_TIMEOUT, DEFAULT_SO_TIMEOUT);
     }
