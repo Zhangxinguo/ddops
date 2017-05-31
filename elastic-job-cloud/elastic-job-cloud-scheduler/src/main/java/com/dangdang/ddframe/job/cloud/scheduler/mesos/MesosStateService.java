@@ -121,7 +121,7 @@ public class MesosStateService {
                 }
             }
         }
-        return new String();
+        return Strings.nullToEmpty(null);
     }
 
     /**
