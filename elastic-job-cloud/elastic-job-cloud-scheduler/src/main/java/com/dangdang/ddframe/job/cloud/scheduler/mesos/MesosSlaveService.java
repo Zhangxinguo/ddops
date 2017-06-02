@@ -20,55 +20,46 @@ package com.dangdang.ddframe.job.cloud.scheduler.mesos;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.dangdang.ddframe.job.cloud.scheduler.util.HttpUtils;
-import com.google.common.base.Strings;
-import com.google.gson.Gson;
+import com.google.common.base.Optional;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-
-import lombok.RequiredArgsConstructor;
 
 /**
  * Mesos Slave服务.
  *
  * @author liguangyun
  */
-@RequiredArgsConstructor
 public class MesosSlaveService {
-    
-    private final MesosAddressService mesosAddressService;
     
     /**
      * 获取所有slaves.
-     * 通过http://mesos-master:5050/slaves endpoint获取
      * 
      * @return jsonArray
      */
     public JsonArray findAllSlaves() {
-        String resp = HttpUtils.get(mesosAddressService.getMasterUrl() + "/slaves");
-        if (Strings.isNullOrEmpty(resp)) {
+        MesosEndpointService mesosEndpointService = MesosEndpointService.getInstance();
+        Optional<JsonObject> jsonObject = mesosEndpointService.slaves(JsonObject.class);
+        if (!jsonObject.isPresent()) {
             return new JsonArray();
         }
-        JsonObject jsonObject = new Gson().fromJson(resp, JsonObject.class);
-        JsonArray orginalSlaves = jsonObject.getAsJsonArray("slaves");
+        JsonArray originalSlaves = jsonObject.get().getAsJsonArray("slaves");
         JsonArray result = new JsonArray();
-        for (JsonElement each : orginalSlaves) {
-            result.add(bulidSlave(each.getAsJsonObject()));
+        for (JsonElement each : originalSlaves) {
+            result.add(buildSlave(each.getAsJsonObject()));
         }
         return result;
     }
     
     /**
      * 获取包含指定roleName的slaves.
-     * 通过http://mesos-master:5050/slaves endpoint获取
      * 
      * @return jsonArray
      */
     public JsonArray findSlavesContainsRole(final String roleName) {
         JsonArray result = new JsonArray();
         for (JsonElement eachSlave : findAllSlaves()) {
-            for (JsonElement eachRole : eachSlave.getAsJsonObject().get("roles").getAsJsonArray()) {
+            for (JsonElement eachRole : eachSlave.getAsJsonObject().getAsJsonArray("roles")) {
                 if (eachRole.getAsJsonObject().get("role_name").getAsString().equalsIgnoreCase(roleName)) {
                     result.add(eachSlave);
                     break;
@@ -78,7 +69,7 @@ public class MesosSlaveService {
         return result;
     }
     
-    private JsonObject bulidSlave(final JsonObject rootObject) {
+    private JsonObject buildSlave(final JsonObject rootObject) {
         JsonObject result = new JsonObject();
         result.addProperty("id", rootObject.get("id").getAsString());
         result.addProperty("hostname", rootObject.get("hostname").getAsString());

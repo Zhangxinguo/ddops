@@ -17,7 +17,6 @@
 
 package com.dangdang.ddframe.job.cloud.scheduler.restful;
 
-import com.dangdang.ddframe.job.cloud.scheduler.mesos.MesosAddressService;
 import com.dangdang.ddframe.job.cloud.scheduler.mesos.MesosSlaveService;
 import com.google.common.base.Strings;
 import com.google.gson.JsonArray;
@@ -34,12 +33,12 @@ import javax.ws.rs.core.MediaType;
  * @author liguangyun
  */
 @Path("/cluster")
-public final class ClusterRestfulApi {
+public final class CloudClusterRestfulApi {
     
     private final MesosSlaveService mesosSlavesService;
     
-    public ClusterRestfulApi() {
-        mesosSlavesService = new MesosSlaveService(new MesosAddressService());
+    public CloudClusterRestfulApi() {
+        mesosSlavesService = new MesosSlaveService();
     }
     
     /**
