@@ -23,7 +23,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.junit.MockitoJUnitRunner;
 
-
 import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 

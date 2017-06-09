@@ -17,7 +17,6 @@
 
 package com.dangdang.ddframe.job.cloud.scheduler.mesos;
 
-
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
