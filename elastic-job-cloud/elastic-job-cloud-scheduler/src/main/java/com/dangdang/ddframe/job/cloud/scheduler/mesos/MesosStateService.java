@@ -29,8 +29,6 @@ import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.codehaus.jettison.json.JSONException;
-
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -55,9 +53,8 @@ public class MesosStateService {
      * 
      * @param appName 作业云配置App的名字
      * @return 沙箱信息
-     * @throws JSONException 解析JSON格式异常
      */
-    public JsonArray sandbox(final String appName) throws JSONException {
+    public JsonArray sandbox(final String appName) {
         MesosEndpointService mesosEndpointService = MesosEndpointService.getInstance();
         Optional<JsonObject> state = mesosEndpointService.state(JsonObject.class);
         if (!state.isPresent()) {
@@ -90,30 +87,38 @@ public class MesosStateService {
     /**
      * 获取任务沙箱信息.
      *
-     * @param appName,executorId 作业云配置App名称，执行器主键
+     * @param appName 作业云配置App名称
+     * @param executorId 执行器主键
      * @return 沙箱信息
-     * @throws JSONException 解析JSON格式异常
      */
-    public String getTaskSandbox(final String appName, final String executorId) throws JSONException {
-        JSONObject state = fetch(stateUrl);
+    public String getMesosSandbox(final String appName, final String executorId) {
+        Optional<JsonObject> stateOptional = MesosEndpointService.getInstance().state(JsonObject.class);
+        if (!stateOptional.isPresent()) {
+            return "";
+        }
+        JsonObject state = stateOptional.get();
         StringBuilder taskSandbox = new StringBuilder();
-        taskSandbox.append(state.getString("pid").split("@")[1]).append("/#/agents/");
-        for (JSONObject each : findExecutors(state.getJSONArray("frameworks"), appName)) {
-            JSONArray slaves = state.getJSONArray("slaves");
+        taskSandbox.append(state.get("pid").getAsString().split("@")[1]).append("/#/agents/");
+        for (JsonObject each : findExecutors(state.getAsJsonArray("frameworks"), appName)) {
+            JsonArray slaves = state.getAsJsonArray("slaves");
             String slaveHost = null;
-            for (int i = 0; i < slaves.length(); i++) {
-                JSONObject slave = slaves.getJSONObject(i);
-                if (each.getString("slave_id").equals(slave.getString("id"))) {
-                    taskSandbox.append(slave.getString("id")).append("/browse?path=");
-                    slaveHost = slave.getString("pid").split("@")[1];
+            for (int i = 0; i < slaves.size(); i++) {
+                JsonObject slave = slaves.get(i).getAsJsonObject();
+                if (each.get("slave_id").getAsString().equals(slave.get("id").getAsString())) {
+                    taskSandbox.append(slave.get("id").getAsString()).append("/browse?path=");
+                    slaveHost = slave.get("pid").getAsString().split("@")[1];
                 }
             }
             Preconditions.checkNotNull(slaveHost);
-            JSONObject slaveState = fetch(String.format("http://%s/state", slaveHost));
-            Collection<JSONObject> executorsOnSlave = findExecutors(slaveState.getJSONArray("frameworks"), appName);
-            for (JSONObject executorOnSlave : executorsOnSlave) {
-                if (executorId.equals(executorOnSlave.get("id"))) {
-                    String directory = executorOnSlave.getString("directory");
+            Optional<JsonObject> slaveStateOptional = MesosEndpointService.getInstance().state(String.format("http://%s", slaveHost), JsonObject.class);
+            if (!slaveStateOptional.isPresent()) {
+                continue;
+            }
+            JsonObject slaveState = slaveStateOptional.get();
+            Collection<JsonObject> executorsOnSlave = findExecutors(slaveState.getAsJsonArray("frameworks"), appName);
+            for (JsonObject executorOnSlave : executorsOnSlave) {
+                if (executorId.equals(executorOnSlave.get("id").getAsString())) {
+                    String directory = executorOnSlave.get("directory").getAsString();
                     if (null != directory) {
                         taskSandbox.append(directory);
                         return taskSandbox.toString();
@@ -121,7 +126,7 @@ public class MesosStateService {
                 }
             }
         }
-        return Strings.nullToEmpty(null);
+        return "";
     }
 
     /**
@@ -129,16 +134,18 @@ public class MesosStateService {
      *
      * @param slaveId slave主键
      * @return hostName 主机
-     * @throws JSONException 解析JSON格式异常
      */
-    public String getFailoverTaskHostname(final String slaveId) throws JSONException {
-        JSONObject state = fetch(stateUrl);
-        JSONArray slaves = state.getJSONArray("slaves");
+    public String getTaskHostname(final String slaveId) {
+        Optional<JsonObject> stateOptional = MesosEndpointService.getInstance().state(JsonObject.class);
+        if (!stateOptional.isPresent()) {
+            return "";
+        }
+        JsonArray slaves = stateOptional.get().getAsJsonArray("slaves");
         String slaveHost = null;
-        for (int i = 0; i < slaves.length(); i++) {
-            JSONObject slave = slaves.getJSONObject(i);
-            if (slaveId.equals(slave.getString("id"))) {
-                slaveHost = slave.getString("hostname");
+        for (int i = 0; i < slaves.size(); i++) {
+            JsonObject slave = slaves.get(i).getAsJsonObject();
+            if (slaveId.equals(slave.get("id").getAsString())) {
+                slaveHost = slave.get("hostname").getAsString();
             }
         }
         return slaveHost;
@@ -149,9 +156,8 @@ public class MesosStateService {
      * 
      * @param appName 作业云配置App的名字
      * @return 执行器信息
-     * @throws JSONException 解析JSON格式异常
      */
-    public Collection<ExecutorStateInfo> executors(final String appName) throws JSONException {
+    public Collection<ExecutorStateInfo> executors(final String appName) {
         MesosEndpointService mesosEndpointService = MesosEndpointService.getInstance();
         Optional<JsonObject> jsonObject = mesosEndpointService.state(JsonObject.class);
         if (!jsonObject.isPresent()) {
@@ -160,11 +166,7 @@ public class MesosStateService {
         return Collections2.transform(findExecutors(jsonObject.get().getAsJsonArray("frameworks"), appName), new Function<JsonObject, ExecutorStateInfo>() {
             @Override
             public ExecutorStateInfo apply(final JsonObject input) {
-                try {
-                    return ExecutorStateInfo.builder().id(getExecutorId(input)).slaveId(input.get("slave_id").getAsString()).build();
-                } catch (final JSONException ex) {
-                    throw new RuntimeException(ex);
-                }
+                return ExecutorStateInfo.builder().id(getExecutorId(input)).slaveId(input.get("slave_id").getAsString()).build();
             }
         });
     }
@@ -173,13 +175,12 @@ public class MesosStateService {
      * 获取所有执行器.
      *
      * @return 执行器信息
-     * @throws JSONException 解析JSON格式异常
      */
-    public Collection<ExecutorStateInfo> executors() throws JSONException {
+    public Collection<ExecutorStateInfo> executors() {
         return executors(null);
     }
     
-    private Collection<JsonObject> findExecutors(final JsonArray frameworks, final String appName) throws JSONException {
+    private Collection<JsonObject> findExecutors(final JsonArray frameworks, final String appName) {
         List<JsonObject> result = Lists.newArrayList();
         Optional<String> frameworkIDOptional = frameworkIDService.fetch();
         String frameworkID;
@@ -204,7 +205,7 @@ public class MesosStateService {
         return result;
     }
     
-    private String getExecutorId(final JsonObject executor) throws JSONException {
+    private String getExecutorId(final JsonObject executor) {
         return executor.has("id") ? executor.get("id").getAsString() : executor.get("executor_id").getAsString();
     }
     

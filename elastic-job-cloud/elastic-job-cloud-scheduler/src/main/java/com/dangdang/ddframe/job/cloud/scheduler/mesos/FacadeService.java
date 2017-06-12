@@ -38,8 +38,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
-import org.codehaus.jettison.json.JSONException;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -378,7 +376,7 @@ public final class FacadeService {
      * @param jobName 作业名称
      * @return 360视图任务数据集合
      */
-    public Collection<TaskFullViewInfo> getTaskFullViewInfo(final String jobName) throws JSONException {
+    public Collection<TaskFullViewInfo> getTaskFullViewInfo(final String jobName) {
         Optional<CloudJobConfiguration> cloudJobConfigurationOptional = this.load(jobName);
         CloudJobConfiguration cloudJobConfiguration;
         String appName = null;
@@ -398,14 +396,14 @@ public final class FacadeService {
                     statusInfo = RUNNING_STATUS_COMMENT;
                 }
                 String taskId = each.getId();
-                result.add(new TaskFullViewInfo(taskId, this.getHostNameByTaskId(taskId), statusInfo, mesosStateService.getTaskSandbox(appName, each.getExecutorId(appName))));
+                result.add(new TaskFullViewInfo(taskId, this.getHostNameByTaskId(taskId), statusInfo, mesosStateService.getMesosSandbox(appName, each.getExecutorId(appName))));
             }
         }
         if (failoverTasks.size() > 0) {
             for (FailoverTaskInfo each : failoverTasks) {
                 TaskContext taskContext = TaskContext.from(each.getOriginalTaskId());
-                String serverIp = mesosStateService.getFailoverTaskHostname(taskContext.getSlaveId());
-                result.add(new TaskFullViewInfo(taskContext.getId(), serverIp, FAILOVER_STATUS, mesosStateService.getTaskSandbox(appName, taskContext.getExecutorId(appName))));
+                String serverIp = mesosStateService.getTaskHostname(taskContext.getSlaveId());
+                result.add(new TaskFullViewInfo(taskContext.getId(), serverIp, FAILOVER_STATUS, mesosStateService.getMesosSandbox(appName, taskContext.getExecutorId(appName))));
             }
         }
         return result;

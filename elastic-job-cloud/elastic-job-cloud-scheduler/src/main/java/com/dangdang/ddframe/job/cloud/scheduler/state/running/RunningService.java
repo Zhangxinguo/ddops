@@ -20,6 +20,7 @@ package com.dangdang.ddframe.job.cloud.scheduler.state.running;
 import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobConfiguration;
 import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobConfigurationService;
 import com.dangdang.ddframe.job.cloud.scheduler.config.job.CloudJobExecutionType;
+import com.dangdang.ddframe.job.cloud.scheduler.mesos.MesosStateService;
 import com.dangdang.ddframe.job.context.TaskContext;
 import com.dangdang.ddframe.job.reg.base.CoordinatorRegistryCenter;
 import com.google.common.base.Function;
@@ -59,9 +60,12 @@ public final class RunningService {
     
     private final CloudJobConfigurationService configurationService;
     
+    private final MesosStateService mesosStateService;
+    
     public RunningService(final CoordinatorRegistryCenter regCenter) {
         this.regCenter = regCenter;
         this.configurationService = new CloudJobConfigurationService(regCenter);
+        this.mesosStateService = new MesosStateService(regCenter);
     }
     
     /**
@@ -79,7 +83,9 @@ public final class RunningService {
                 
                 @Override
                 public TaskContext apply(final String input) {
-                    return TaskContext.from(regCenter.get(RunningNode.getRunningTaskNodePath(TaskContext.MetaInfo.from(input).toString())));
+                    TaskContext taskContext = TaskContext.from(regCenter.get(RunningNode.getRunningTaskNodePath(TaskContext.MetaInfo.from(input).toString())));
+                    TASK_HOSTNAME_MAPPER.put(taskContext.getId(), mesosStateService.getTaskHostname(taskContext.getSlaveId()));
+                    return taskContext;
                 }
             })));
         }
